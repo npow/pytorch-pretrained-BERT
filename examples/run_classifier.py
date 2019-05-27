@@ -102,6 +102,40 @@ class DataProcessor(object):
             return lines
 
 
+from qanta.datasets.quiz_bowl import QuizBowlDataset
+import spacy
+
+class QuizBowlProcessor(DataProcessor):
+    """Processor for the QuizBowl data set."""
+
+    def __init__(self):
+        self.dataset = QuizBowlDataset(guesser_train=True)
+        self.nlp = spacy.load('en_core_web_sm')
+
+    def get_train_examples(self, _):
+        return self._create_examples(self.dataset.questions_by_fold()['guesstrain'], 'train')
+
+    def get_dev_examples(self, _):
+        return self._create_examples(self.dataset.questions_by_fold()['guessdev'], 'dev')
+
+    def get_labels(self):
+        return list(set([x.label for x in self.get_train_examples(None) + self.get_dev_examples(None)]))
+
+    def _create_examples(self, lines, set_type):
+        examples = []
+        for i, qa in enumerate(tqdm(lines)):
+            #doc = self.nlp(qa.text)
+            label = qa.page
+            text_a = qa.text
+            text_b = None
+            guid = '{}-{}'.format(set_type, i)
+            examples.append(InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+            #for question in doc.sents:
+            #    text_a = question.text
+            #    examples.append(InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+        return examples
+
+
 class MrpcProcessor(DataProcessor):
     """Processor for the MRPC data set (GLUE version)."""
 
@@ -557,6 +591,8 @@ def compute_metrics(task_name, preds, labels):
         return {"acc": simple_accuracy(preds, labels)}
     elif task_name == "wnli":
         return {"acc": simple_accuracy(preds, labels)}
+    elif task_name == "qb":
+        return {"acc": simple_accuracy(preds, labels)}
     else:
         raise KeyError(task_name)
 
@@ -661,6 +697,7 @@ def main():
         ptvsd.wait_for_attach()
 
     processors = {
+        "qb": QuizBowlProcessor,
         "cola": ColaProcessor,
         "mnli": MnliProcessor,
         "mnli-mm": MnliMismatchedProcessor,
@@ -674,6 +711,7 @@ def main():
     }
 
     output_modes = {
+        "qb": "classification",
         "cola": "classification",
         "mnli": "classification",
         "mrpc": "classification",
@@ -1022,3 +1060,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
