@@ -783,22 +783,23 @@ def main():
             num_train_optimization_steps = num_train_optimization_steps // torch.distributed.get_world_size()
 
     # Prepare model
-    cache_dir = args.cache_dir if args.cache_dir else os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE), 'distributed_{}'.format(args.local_rank))
-    model = BertForSequenceClassification.from_pretrained(args.bert_model,
-              cache_dir=cache_dir,
-              num_labels=num_labels)
-    if args.fp16:
-        model.half()
-    model.to(device)
-    if args.local_rank != -1:
-        try:
-            from apex.parallel import DistributedDataParallel as DDP
-        except ImportError:
-            raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use distributed and fp16 training.")
+    if args.do_train:
+        cache_dir = args.cache_dir if args.cache_dir else os.path.join(str(PYTORCH_PRETRAINED_BERT_CACHE), 'distributed_{}'.format(args.local_rank))
+        model = BertForSequenceClassification.from_pretrained(args.bert_model,
+                  cache_dir=cache_dir,
+                  num_labels=num_labels)
+        if args.fp16:
+            model.half()
+        model.to(device)
+        if args.local_rank != -1:
+            try:
+                from apex.parallel import DistributedDataParallel as DDP
+            except ImportError:
+                raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use distributed and fp16 training.")
 
-        model = DDP(model)
-    elif n_gpu > 1:
-        model = torch.nn.DataParallel(model)
+            model = DDP(model)
+        elif n_gpu > 1:
+            model = torch.nn.DataParallel(model)
 
     # Prepare optimizer
     if args.do_train:
@@ -916,7 +917,11 @@ def main():
         model = BertForSequenceClassification.from_pretrained(args.output_dir, num_labels=num_labels)
         tokenizer = BertTokenizer.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
     else:
-        model = BertForSequenceClassification.from_pretrained(args.bert_model, num_labels=num_labels)
+        output_config_file = os.path.join(args.output_dir, CONFIG_NAME)
+        config = BertConfig(output_config_file)
+        model = BertForSequenceClassification(config, num_labels=num_labels)
+        model.load_state_dict(torch.load('{}/pytorch_model.bin'.format(args.output_dir)))
+        tokenizer = BertTokenizer.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
     model.to(device)
 
     if args.do_eval and (args.local_rank == -1 or torch.distributed.get_rank() == 0):
