@@ -40,6 +40,8 @@ from pytorch_pretrained_bert.modeling import BertForSequenceClassification, Bert
 from pytorch_pretrained_bert.tokenization import BertTokenizer
 from pytorch_pretrained_bert.optimization import BertAdam, WarmupLinearSchedule
 
+from qanta.datasets.quiz_bowl import QuizBowlProcessor
+
 logger = logging.getLogger(__name__)
 
 
@@ -100,40 +102,6 @@ class DataProcessor(object):
                     line = list(unicode(cell, 'utf-8') for cell in line)
                 lines.append(line)
             return lines
-
-
-from qanta.datasets.quiz_bowl import QuizBowlDataset
-import spacy
-
-class QuizBowlProcessor(DataProcessor):
-    """Processor for the QuizBowl data set."""
-
-    def __init__(self):
-        self.dataset = QuizBowlDataset(guesser_train=True)
-        self.nlp = spacy.load('en_core_web_sm')
-
-    def get_train_examples(self, _):
-        return self._create_examples(self.dataset.questions_by_fold()['guesstrain'], 'train')
-
-    def get_dev_examples(self, _):
-        return self._create_examples(self.dataset.questions_by_fold()['guessdev'], 'dev')
-
-    def get_labels(self):
-        return list(sorted(set([x.label for x in self.get_train_examples(None) + self.get_dev_examples(None)])))
-
-    def _create_examples(self, lines, set_type):
-        examples = []
-        for i, qa in enumerate(tqdm(lines)):
-            #doc = self.nlp(qa.text)
-            label = qa.page
-            text_a = qa.text
-            text_b = None
-            guid = '{}-{}'.format(set_type, i)
-            examples.append(InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
-            #for question in doc.sents:
-            #    text_a = question.text
-            #    examples.append(InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
-        return examples
 
 
 class MrpcProcessor(DataProcessor):
