@@ -119,7 +119,7 @@ class QuizBowlProcessor(DataProcessor):
         return self._create_examples(self.dataset.questions_by_fold()['guessdev'], 'dev')
 
     def get_labels(self):
-        return list(set([x.label for x in self.get_train_examples(None) + self.get_dev_examples(None)]))
+        return list(sorted(set([x.label for x in self.get_train_examples(None) + self.get_dev_examples(None)])))
 
     def _create_examples(self, lines, set_type):
         examples = []
