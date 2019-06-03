@@ -36,11 +36,11 @@ from scipy.stats import pearsonr, spearmanr
 from sklearn.metrics import matthews_corrcoef, f1_score
 
 from pytorch_pretrained_bert.file_utils import PYTORCH_PRETRAINED_BERT_CACHE, WEIGHTS_NAME, CONFIG_NAME
-from pytorch_pretrained_bert.modeling import BertForSequenceClassification, BertConfig
+from pytorch_pretrained_bert.modeling import BertForSequenceClassification, BertConfig, BertForNextSentencePrediction
 from pytorch_pretrained_bert.tokenization import BertTokenizer
 from pytorch_pretrained_bert.optimization import BertAdam, WarmupLinearSchedule
 
-from qanta.datasets.quiz_bowl import QuizBowlProcessor
+from qanta.datasets.quiz_bowl import QuizBowlProcessor, QuizBowlLabelProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -559,7 +559,7 @@ def compute_metrics(task_name, preds, labels):
         return {"acc": simple_accuracy(preds, labels)}
     elif task_name == "wnli":
         return {"acc": simple_accuracy(preds, labels)}
-    elif task_name == "qb":
+    elif task_name in ["qb", "qb-labels"]:
         return {"acc": simple_accuracy(preds, labels)}
     else:
         raise KeyError(task_name)
@@ -666,6 +666,7 @@ def main():
 
     processors = {
         "qb": QuizBowlProcessor,
+        "qb-labels": QuizBowlLabelProcessor,
         "cola": ColaProcessor,
         "mnli": MnliProcessor,
         "mnli-mm": MnliMismatchedProcessor,
@@ -680,6 +681,7 @@ def main():
 
     output_modes = {
         "qb": "classification",
+        "qb-labels": "classification",
         "cola": "classification",
         "mnli": "classification",
         "mrpc": "classification",
@@ -885,11 +887,15 @@ def main():
         model = BertForSequenceClassification.from_pretrained(args.output_dir, num_labels=num_labels)
         tokenizer = BertTokenizer.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
     else:
+        '''
         output_config_file = os.path.join(args.output_dir, CONFIG_NAME)
         config = BertConfig(output_config_file)
         model = BertForSequenceClassification(config, num_labels=num_labels)
         model.load_state_dict(torch.load('{}/pytorch_model.bin'.format(args.output_dir)))
         tokenizer = BertTokenizer.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
+        '''
+        model = BertForSequenceClassification.from_pretrained(args.bert_model, num_labels=num_labels)
+        tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=args.do_lower_case)
     model.to(device)
 
     if args.do_eval and (args.local_rank == -1 or torch.distributed.get_rank() == 0):
@@ -925,7 +931,7 @@ def main():
             label_ids = label_ids.to(device)
 
             with torch.no_grad():
-                logits = model(input_ids, segment_ids, input_mask, labels=None)
+                logits = model(input_ids, segment_ids, input_mask)
 
             # create eval loss and other metric required by the task
             if output_mode == "classification":
