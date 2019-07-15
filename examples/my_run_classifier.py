@@ -40,7 +40,7 @@ from pytorch_pretrained_bert.modeling import BertForSequenceClassification, Bert
 from pytorch_pretrained_bert.tokenization import BertTokenizer
 from pytorch_pretrained_bert.optimization import BertAdam, WarmupLinearSchedule
 
-from qanta.datasets.quiz_bowl import QuizBowlProcessor
+from qanta.datasets.quiz_bowl import QuizBowlProcessor, QuizBowlRerankerProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -559,7 +559,7 @@ def compute_metrics(task_name, preds, labels):
         return {"acc": simple_accuracy(preds, labels)}
     elif task_name == "wnli":
         return {"acc": simple_accuracy(preds, labels)}
-    elif task_name == "qb":
+    elif task_name in ["qb", "qb_reranker"]:
         return {"acc": simple_accuracy(preds, labels)}
     else:
         raise KeyError(task_name)
@@ -666,6 +666,7 @@ def main():
 
     processors = {
         "qb": QuizBowlProcessor,
+        "qb_reranker": QuizBowlRerankerProcessor,
         "cola": ColaProcessor,
         "mnli": MnliProcessor,
         "mnli-mm": MnliMismatchedProcessor,
@@ -680,6 +681,7 @@ def main():
 
     output_modes = {
         "qb": "classification",
+        "qb_reranker": "classification",
         "cola": "classification",
         "mnli": "classification",
         "mrpc": "classification",
