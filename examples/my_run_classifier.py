@@ -933,7 +933,7 @@ def main():
                 result['global_step'] = global_step
                 result['loss'] = loss
 
-                output_eval_file = os.path.join(args.output_dir, "eval_results.txt")
+                output_eval_file = os.path.join(args.output_dir, "eval_results_{}.txt".format(epoch))
                 with open(output_eval_file, "w") as writer:
                     logger.info("***** Eval results *****")
                     for key in sorted(result.keys()):
