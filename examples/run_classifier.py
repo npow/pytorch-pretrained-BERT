@@ -427,7 +427,7 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
         else:
             # Account for [CLS] and [SEP] with "- 2"
             if len(tokens_a) > max_seq_length - 2:
-                tokens_a = tokens_a[:(max_seq_length - 2)]
+                tokens_a = tokens_a[-(max_seq_length - 2):]
 
         # The convention in BERT is:
         # (a) For sequence pairs:
@@ -538,7 +538,6 @@ def pearson_and_spearman(preds, labels):
 
 
 def compute_metrics(task_name, preds, labels):
-    assert len(preds) == len(labels)
     if task_name == "cola":
         return {"mcc": matthews_corrcoef(labels, preds)}
     elif task_name == "sst-2":
